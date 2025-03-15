@@ -27,23 +27,6 @@ if (isset($_POST['log-in'])) {
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
-
-                // Update last login time
-                $update_stmt = mysqli_prepare($conn, "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?");
-                mysqli_stmt_bind_param($update_stmt, "i", $user['user_id']);
-                mysqli_stmt_execute($update_stmt);
-                mysqli_stmt_close($update_stmt);
-
-                // Insert session info for additional security (optional)
-                $session_id = session_id();
-                $ip_address = $_SERVER['REMOTE_ADDR'];
-                $user_agent = $_SERVER['HTTP_USER_AGENT'];
-
-                $session_stmt = mysqli_prepare($conn, "INSERT INTO sessions (session_id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
-                mysqli_stmt_bind_param($session_stmt, "siss", $session_id, $user['user_id'], $ip_address, $user_agent);
-                mysqli_stmt_execute($session_stmt);
-                mysqli_stmt_close($session_stmt);
-
                 // Redirect based on role
                 switch ($user['role']) {
                     case 'teacher':

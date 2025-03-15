@@ -10,10 +10,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $confirm_password = $_POST['cpassword'];
+    $role = isset($_POST['role']) ? $_POST['role'] : '';
 
     // Basic validation
-    if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
-        $error_msg = "All fields are required.";
+    if (empty($username) || empty($email) || empty($password) || empty($confirm_password) || empty($role)) {
+        $error_msg = "All fields are required, including role.";
     } elseif ($password !== $confirm_password) {
         $error_msg = "Passwords do not match.";
     } else {
@@ -29,15 +30,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Hash the password
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // Insert new user into database
-            $stmt = mysqli_prepare($conn, "INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
-            mysqli_stmt_bind_param($stmt, "sss", $username, $email, $hashed_password);
-            
-            if (mysqli_stmt_execute($stmt)) {
+            // Insert new user into database with role
+            $insert_stmt = mysqli_prepare($conn, "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            mysqli_stmt_bind_param($insert_stmt, "ssss", $username, $email, $hashed_password, $role);
+
+            if (mysqli_stmt_execute($insert_stmt)) {
                 $success_msg = "Account created successfully. You can now log in.";
             } else {
                 $error_msg = "Something went wrong. Please try again.";
             }
+
+            mysqli_stmt_close($insert_stmt);
         }
 
         mysqli_stmt_close($stmt);
@@ -46,6 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 mysqli_close($conn);
 ?>
+
 
 <!-- Signup Form HTML -->
 <!DOCTYPE html>

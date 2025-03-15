@@ -7,5 +7,6 @@
 </head>
 <body>
     <h1>Welcome, Class Rep</h1>
+    <a href="logout.php">Logout</a>
 </body>
 </html>
