@@ -1,34 +1,53 @@
 <?php
 session_start();
-// Check if user is logged in and is a teacher
+
+// Check if user is logged in
 if(!isset($_SESSION['user_id'])) {
     header('Location: ../LoginPages/log-in.php');
     exit();
 }
 
+// Check if user is either a teacher or a class-rep
+if($_SESSION['role'] != 'teacher' && $_SESSION['role'] != 'class_rep') {
+    header('Location: ../LoginPages/log-in.php');
+    exit();
+}
+
+// Store user role for later use
+$user_role = $_SESSION['role'];
+
 // Check if material ID is provided
 if(!isset($_GET['id']) || empty($_GET['id'])) {
     $_SESSION['error'] = "Invalid material ID.";
-    header('Location: teacher-dashboard.php');
+    // Redirect based on role
+    if($user_role == 'teacher') {
+        header('Location: teacher-dashboard.php');
+    } else {
+        header('Location: class-rep-dashboard.php');
+    }
     exit();
 }
 
 $material_id = $_GET['id'];
-$teacher_id = $_SESSION['user_id'];
 
 // Database connection
 require_once('../LoginPages/database.php');
 
-// First, check if this material belongs to the current teacher
-$sql = "SELECT * FROM materials WHERE id = ? AND teacher_id = ?";
+// Get the material information without teacher_id restriction
+$sql = "SELECT * FROM materials WHERE id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $material_id, $teacher_id);
+$stmt->bind_param("i", $material_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if($result->num_rows === 0) {
-    $_SESSION['error'] = "You don't have permission to delete this material or it doesn't exist.";
-    header('Location: teacher-dashboard.php');
+    $_SESSION['error'] = "Material doesn't exist.";
+    // Redirect based on role
+    if($user_role == 'teacher') {
+        header('Location: teacher-dashboard.php');
+    } else {
+        header('Location: class-rep-dashboard.php');
+    }
     exit();
 }
 
@@ -36,10 +55,10 @@ if($result->num_rows === 0) {
 $material = $result->fetch_assoc();
 $pdf_path = $material['pdf_path'];
 
-// Delete the material from the database
-$sql = "DELETE FROM materials WHERE id = ? AND teacher_id = ?";
+// Delete the material from the database - no teacher_id restriction
+$sql = "DELETE FROM materials WHERE id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $material_id, $teacher_id);
+$stmt->bind_param("i", $material_id);
 
 if($stmt->execute()) {
     // If successful, also delete the PDF file if it exists
@@ -56,7 +75,11 @@ if($stmt->execute()) {
 $stmt->close();
 $conn->close();
 
-// Redirect back to the teacher dashboard
-header('Location: teacher-dashboard.php');
+// Redirect back to the appropriate dashboard based on role
+if($user_role == 'teacher') {
+    header('Location: teacher-dashboard.php');
+} else {
+    header('Location: class-rep-dashboard.php');
+}
 exit();
 ?>

@@ -185,24 +185,6 @@ h1:after {
     color: #444;
 }
 
-.material-actions {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-}
-
-.btn-view, .btn-download {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    text-decoration: none;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-    margin: 0 5px;
-}
-
 .btn-view {
     background-color: #e6f0ff;
     color: #3a86ff;

@@ -1,8 +1,14 @@
 <?php
 session_start();
 
-// Check if user is logged in and is a teacher
-if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+// Check if user is logged in and has the appropriate role
+if(!isset($_SESSION['user_id']) || $_SESSION['role'] == 'student') {
+    header('Location: ../LoginPages/log-in.php');
+    exit();
+}
+
+// Check if user is either a teacher or a class-rep
+if($_SESSION['role'] != 'teacher' && $_SESSION['role'] != 'class_rep') {
     header('Location: ../LoginPages/log-in.php');
     exit();
 }
@@ -10,26 +16,37 @@ if(!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 // Check if material ID is provided
 if(!isset($_GET['id']) || empty($_GET['id'])) {
     $_SESSION['error'] = "Invalid material ID.";
-    header('Location: teacher-dashboard.php');
+    // Redirect based on role
+    if($_SESSION['role'] == 'teacher') {
+        header('Location: teacher-dashboard.php');
+    } else {
+        header('Location: class-rep-dashboard.php');
+    }
     exit();
 }
 
 $material_id = $_GET['id'];
-$teacher_id = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['role'];
 
 // Database connection
 require_once('../LoginPages/database.php');
 
-// Check if this material belongs to the current teacher
-$sql = "SELECT * FROM materials WHERE id = ? AND teacher_id = ?";
+// Get the material information - no restriction on teacher_id anymore
+$sql = "SELECT * FROM materials WHERE id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $material_id, $teacher_id);
+$stmt->bind_param("i", $material_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if($result->num_rows === 0) {
-    $_SESSION['error'] = "You don't have permission to edit this material or it doesn't exist.";
-    header('Location: teacher-dashboard.php');
+    $_SESSION['error'] = "Material doesn't exist.";
+    // Redirect based on role
+    if($user_role == 'teacher') {
+        header('Location: teacher-dashboard.php');
+    } else {
+        header('Location: class-rep-dashboard.php');
+    }
     exit();
 }
 
@@ -42,6 +59,7 @@ if(isset($_POST['submit'])) {
     $message = trim($_POST['message']);
     $current_pdf = $material['pdf_path'];
     $pdf_path = $current_pdf; // Default to current path
+    $teacher_id = $material['teacher_id']; // Keep the original teacher_id
     
     // Validate form inputs
     if(empty($title) || empty($description)) {
@@ -75,13 +93,19 @@ if(isset($_POST['submit'])) {
         
         // If no errors, update the database
         if(!isset($_SESSION['error'])) {
-            $sql = "UPDATE materials SET title = ?, description = ?, message = ?, pdf_path = ? WHERE id = ? AND teacher_id = ?";
+            // Update query without teacher_id restriction
+            $sql = "UPDATE materials SET title = ?, description = ?, message = ?, pdf_path = ? WHERE id = ?";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssssii", $title, $description, $message, $pdf_path, $material_id, $teacher_id);
+            $stmt->bind_param("ssssi", $title, $description, $message, $pdf_path, $material_id);
             
             if($stmt->execute()) {
                 $_SESSION['success'] = "Material successfully updated.";
-                header('Location: teacher-dashboard.php');
+                // Redirect based on role
+                if($user_role == 'teacher') {
+                    header('Location: teacher-dashboard.php');
+                } else {
+                    header('Location: class-rep-dashboard.php');
+                }
                 exit();
             } else {
                 $_SESSION['error'] = "Database error: " . $conn->error;
@@ -89,6 +113,9 @@ if(isset($_POST['submit'])) {
         }
     }
 }
+
+// Determine which dashboard to return to based on role
+$dashboard_url = ($user_role == 'teacher') ? 'teacher-dashboard.php' : 'class-rep-dashboard.php';
 ?>
 
 <!DOCTYPE html>
@@ -156,7 +183,7 @@ if(isset($_POST['submit'])) {
             <?php endif; ?>
 
             <div class="form-actions">
-                <a href="teacher-dashboard.php" class="btn-cancel">Cancel</a>
+                <a href="<?php echo $dashboard_url; ?>" class="btn-cancel">Cancel</a>
                 <button type="submit" name="submit" class="btn-submit">Update Material</button>
             </div>
         </form>

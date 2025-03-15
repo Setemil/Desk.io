@@ -33,22 +33,38 @@ $result = $stmt->get_result();
     <link rel="stylesheet" href="../CSS/student-style.css">
     <style>
         .navbar {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    background-color: #3a86ff;
-    color: white;
-    padding: 0 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #3a86ff;
+            color: white;
+            padding: 0 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .material-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .btn-view, .btn-download{
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            margin: 0 5px;
+        }
     </style>
 </head>
 <body>
     <header class="navbar">
-        <div class="logo">Desk.io</div>
+        <div class="logo">Desk.io | Student</div>
         <a href="logout.php" class="logout">Logout</a>
     </header>
     
