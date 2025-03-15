@@ -8,7 +8,7 @@
   - **Teacher**
     - Upload and send course materials (PDFs, notes, messages).
     - View class reps and students.
-    - Materials are visible only to class reps and students.
+    - Materials are visible only to class reps and students and the tracers that posted them.
   - **Class Representative**
     - View/download all materials uploaded by any teacher.
     - Edit or delete any uploaded material (shared responsibility with teacher).
