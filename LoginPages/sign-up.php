@@ -1,93 +1,57 @@
 <?php
-require_once 'database.php';
+include 'database.php';
 
-// Initialize variables
-$error_msg = "";
-$success_msg = "";
+$error_msg = '';
+$success_msg = '';
 
-// Process sign-up form submission
-if (isset($_POST['sign-up'])) {
-    // Get form data and sanitize
-    $username = $_POST['username'];
-    $email = $_POST['email'];
+// Handle form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST['username']);
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
-    $cpassword = $_POST['cpassword'];
-    $role = $_POST['role']; // Get selected role
-    
-    // Validate input
-    if (empty($username) || empty($email) || empty($password) || empty($cpassword) || empty($role)) {
-        $error_msg = "All fields are required";
-    } 
-    // Validate username (alphanumeric, 3-20 chars)
-    elseif (!preg_match('/^[a-zA-Z0-9_]{3,20}$/', $username)) {
-        $error_msg = "Username must be 3-20 characters and contain only letters, numbers, and underscores";
-    }
-    // Validate email
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error_msg = "Please enter a valid email address";
-    }
-    // Check password length
-    elseif (strlen($password) < 8) {
-        $error_msg = "Password must be at least 8 characters long";
-    }
-    // Check if passwords match
-    elseif ($password !== $cpassword) {
-        $error_msg = "Passwords do not match";
-    }
-    // Validate role
-    elseif (!in_array($role, ['student', 'teacher', 'class_rep'])) {
-        $error_msg = "Invalid role selected";
-    }
-    else {
-        try {
-            // Check if username already exists
-            $stmt = $pdo->prepare("SELECT username FROM users WHERE username = ?");
-            $stmt->execute([$username]);
+    $confirm_password = $_POST['cpassword'];
+
+    // Basic validation
+    if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
+        $error_msg = "All fields are required.";
+    } elseif ($password !== $confirm_password) {
+        $error_msg = "Passwords do not match.";
+    } else {
+        // Check if username or email already exists
+        $stmt = mysqli_prepare($conn, "SELECT user_id FROM users WHERE username = ? OR email = ?");
+        mysqli_stmt_bind_param($stmt, "ss", $username, $email);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_store_result($stmt);
+
+        if (mysqli_stmt_num_rows($stmt) > 0) {
+            $error_msg = "Username or email already exists.";
+        } else {
+            // Hash the password
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            // Insert new user into database
+            $stmt = mysqli_prepare($conn, "INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, "sss", $username, $email, $hashed_password);
             
-            if ($stmt->rowCount() > 0) {
-                $error_msg = "Username already exists. Please choose another one.";
+            if (mysqli_stmt_execute($stmt)) {
+                $success_msg = "Account created successfully. You can now log in.";
             } else {
-                // Check if email already exists
-                $stmt = $pdo->prepare("SELECT email FROM users WHERE email = ?");
-                $stmt->execute([$email]);
-                
-                if ($stmt->rowCount() > 0) {
-                    $error_msg = "Email already exists. Please use another email or login.";
-                } else {
-                    // Hash the password
-                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    
-                    // Insert new user with role
-                    $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$username, $email, $hashed_password, $role]);
-                    
-                    if ($stmt->rowCount() > 0) {
-                        $success_msg = "Registration successful! You can now login.";
-                        
-                        // Auto login after registration (optional)
-                        $user_id = $pdo->lastInsertId();
-                        $_SESSION['user_id'] = $user_id;
-                        $_SESSION['username'] = $username;
-                        $_SESSION['role'] = $role;
-                        
-                        header("Location: log-in.php");
-                        exit;
-                    } else {
-                        $error_msg = "Registration failed. Please try again.";
-                    }
-                }
+                $error_msg = "Something went wrong. Please try again.";
             }
-        } catch (PDOException $e) {
-            $error_msg = "Database error: " . $e->getMessage();
         }
+
+        mysqli_stmt_close($stmt);
     }
 }
+
+mysqli_close($conn);
 ?>
 
+<!-- Signup Form HTML -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Desk.io | Create Account</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -124,7 +88,7 @@ if (isset($_POST['sign-up'])) {
     </style>
 </head>
 <body>
-    <div class="main-content">
+<div class="main-content">
         <div class="header">
             <h2>Sign-up</h2>
             <a href="../index.html">Go Back</a>

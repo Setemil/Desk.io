@@ -1,50 +1,49 @@
 <?php
-// log-in.php - User login processing with role-based redirection
+session_start(); 
 
-// Include database connection
 require_once 'database.php';
-
-// Initialize variables
 $error_msg = "";
 
-// Process login form submission
 if (isset($_POST['log-in'])) {
-    // Get form data and sanitize
-    $username = $_POST['username'];
+    $username = trim($_POST['username']);
     $password = $_POST['password'];
-    
+
     // Validate input
     if (empty($username) || empty($password)) {
         $error_msg = "Both username/email and password are required";
     } else {
-        try {
-            // Check if input is username or email and retrieve role
-            $stmt = $pdo->prepare("SELECT user_id, username, email, password, role FROM users WHERE username = ? OR email = ?");
-            $stmt->execute([$username, $username]);
-            $user = $stmt->fetch();
-            
-            if ($user && password_verify($password, $user['password'])) {
-                // Password is correct, start a new session
+        // Check if input is username or email and retrieve user
+        $stmt = mysqli_prepare($conn, "SELECT user_id, username, email, password, role FROM users WHERE username = ? OR email = ?");
+        mysqli_stmt_bind_param($stmt, "ss", $username, $username);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+
+        if ($user = mysqli_fetch_assoc($result)) {
+            if (password_verify($password, $user['password'])) {
+                // Password is correct
                 session_regenerate_id(true); // Prevent session fixation attacks
-                
+
                 // Store user data in session
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
-                
+
                 // Update last login time
-                $update_stmt = $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?");
-                $update_stmt->execute([$user['user_id']]);
-                
+                $update_stmt = mysqli_prepare($conn, "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?");
+                mysqli_stmt_bind_param($update_stmt, "i", $user['user_id']);
+                mysqli_stmt_execute($update_stmt);
+                mysqli_stmt_close($update_stmt);
+
                 // Insert session info for additional security (optional)
                 $session_id = session_id();
                 $ip_address = $_SERVER['REMOTE_ADDR'];
                 $user_agent = $_SERVER['HTTP_USER_AGENT'];
-                $expires_at = date('Y-m-d H:i:s', time() + 86400); // 24 hours from now
-                
-                $session_stmt = $pdo->prepare("INSERT INTO sessions (session_id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
-                $session_stmt->execute([$session_id, $user['user_id'], $ip_address, $user_agent]);
-                
+
+                $session_stmt = mysqli_prepare($conn, "INSERT INTO sessions (session_id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
+                mysqli_stmt_bind_param($session_stmt, "siss", $session_id, $user['user_id'], $ip_address, $user_agent);
+                mysqli_stmt_execute($session_stmt);
+                mysqli_stmt_close($session_stmt);
+
                 // Redirect based on role
                 switch ($user['role']) {
                     case 'teacher':
@@ -57,18 +56,23 @@ if (isset($_POST['log-in'])) {
                         header("Location: ../Dashboard/student-dashboard.php");
                         break;
                     default:
-                        header("Location: dashboard.php"); // Fallback
+                        header("Location: dashboard.php");
                 }
                 exit;
             } else {
                 $error_msg = "Invalid username/email or password";
             }
-        } catch (PDOException $e) {
-            $error_msg = "Database error: " . $e->getMessage();
+        } else {
+            $error_msg = "Invalid username/email or password";
         }
+
+        mysqli_stmt_close($stmt);
     }
 }
+
+mysqli_close($conn);
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -105,6 +109,8 @@ if (isset($_POST['log-in'])) {
                     <i class="fas fa-sign-in-alt"></i> Log In
                 </button>
             </div>
+            <br>
+            <a href="OTPRequest.php">Forgot Passsword?</a>
         </form>
         
         <div class="footer">
